@@ -1,46 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>// Place global declarations here.
 
-
-const int nPacT = 2; // number of pacT's
+const int nPacT = 4; // number of pacT's
 typedef int[0, nPacT-1] id_pacT;
+
+// Define data for pacTs
+const struct { int id, prio, x, y; } data[nPacT] = { 
+	{0, 8, 5, 5}, 
+	{1, 2, 8, 8},
+	{2, 4, 2, 2},
+	{3, 5, 15, 15}
+};
 
 
 chan needHelp[nPacT], cancelNeed[nPacT];
 chan canHelp[nPacT], cancelHelp[nPacT];
+chan becomeCaller[nPacT], becomeHelper[nPacT], becomeRemover[nPacT];
+chan resetCallerRole[nPacT], resetHelperRole[nPacT];
 chan helpRequest;
-chan requestApproved, requestDenied, requestCanceled;
+chan requestApproved, requestDenied, cancelRequest, requestTimeout;
 broadcast chan helpArrived;
 broadcast chan problemSolved;
-broadcast chan prepareDone;
+chan prepareTask, prepareDone;
 
 
-const int MAX_DISTANCE = 500; //Meters
+const int MAX_DISTANCE = 8; //km
 int leaderPrio;
-int coordinates;
+int xPos;
+int yPos;
 
-void putData(int pLeaderPrio, int pCoordinates) {
+void putData(int pLeaderPrio, int pxPos, int pyPos) {
 	leaderPrio = pLeaderPrio;
-	coordinates = pCoordinates;
+	xPos = pxPos;
+	yPos = pyPos;
 }
 
-bool check(int pLeaderPrio, int pCoordinates){
-	return (leaderPrio &gt; pLeaderPrio &amp;&amp; (coordinates - pCoordinates) &lt; MAX_DISTANCE);
+bool check(int pLeaderPrio, int pxPos, int pyPos){
+	bool prioClear = leaderPrio &gt; pLeaderPrio;
+
+	int dx = (pxPos-xPos);
+	int dy = (pyPos-yPos);
+	int dis = dx*dx + dy*dy;
+	bool disClear = dis &lt; (MAX_DISTANCE*MAX_DISTANCE);
+
+	return (prioClear &amp;&amp; disClear);
 }
 </declaration><template><name x="5" y="5">Synchronization</name><parameter>const id_pacT id</parameter><declaration>// Place local declarations here.
-</declaration><location id="id0" x="-648" y="-40"><name x="-688" y="-24">RemoverRole</name></location><location id="id1" x="-848" y="-216"><name x="-888" y="-248">CallerRole</name></location><location id="id2" x="-448" y="-216"><name x="-458" y="-246">HelperRole</name></location><location id="id3" x="-648" y="-216"><name x="-640" y="-208">IDLE</name></location><init ref="id3"/><transition><source ref="id3"/><target ref="id2"/><label kind="synchronisation" x="-576" y="-240">canHelp[id]!</label></transition><transition><source ref="id2"/><target ref="id3"/><label kind="synchronisation" x="-592" y="-320">cancelHelp[id]!</label><nail x="-552" y="-304"/></transition><transition><source ref="id1"/><target ref="id3"/><label kind="synchronisation" x="-792" y="-320">cancelNeed[id]!</label><nail x="-752" y="-304"/></transition><transition><source ref="id0"/><target ref="id3"/><label kind="synchronisation" x="-696" y="-136">problemSolved?</label></transition><transition><source ref="id1"/><target ref="id0"/><label kind="synchronisation" x="-840" y="-64">helpArrived?</label><nail x="-848" y="-40"/></transition><transition><source ref="id2"/><target ref="id0"/><label kind="synchronisation" x="-528" y="-64">helpArrived?</label><nail x="-448" y="-40"/></transition><transition><source ref="id3"/><target ref="id1"/><label kind="synchronisation" x="-784" y="-240">needHelp[id]!</label></transition></template><template><name>CallerRole</name><parameter>const id_pacT id, int myPrio</parameter><declaration>clock t0;
-int coordinates = 100;
-bool solvedAlone = false;</declaration><location id="id4" x="-16" y="-184"><name x="-8" y="-208">waiting</name></location><location id="id5" x="-416" y="-176"><name x="-480" y="-208">Standalone</name></location><location id="id6" x="-416" y="0"><name x="-408" y="-32">called</name><label kind="comments">(in community)</label></location><location id="id7" x="-200" y="-176"><name x="-232" y="-216">requesting</name></location><init ref="id5"/><transition><source ref="id6"/><target ref="id5"/><label kind="synchronisation" x="-552" y="-104">requestCanceled!</label><nail x="-440" y="-96"/></transition><transition><source ref="id4"/><target ref="id6"/><label kind="synchronisation" x="-8" y="-72">requestApproved?</label><nail x="-16" y="-8"/></transition><transition><source ref="id4"/><target ref="id7"/><label kind="synchronisation" x="-152" y="-128">requestDenied?</label><nail x="-104" y="-128"/></transition><transition><source ref="id7"/><target ref="id4"/><label kind="synchronisation" x="-152" y="-264">helpRequest!</label><label kind="assignment" x="-184" y="-248">putData(myPrio, coordinates)</label><nail x="-112" y="-232"/></transition><transition><source ref="id7"/><target ref="id5"/><label kind="synchronisation" x="-360" y="-248">cancelNeed[id]?</label><nail x="-312" y="-224"/></transition><transition><source ref="id6"/><target ref="id5"/><label kind="synchronisation" x="-384" y="-104">helpArrived?</label><nail x="-392" y="-96"/></transition><transition><source ref="id5"/><target ref="id7"/><label kind="synchronisation" x="-344" y="-176">needHelp[id]?</label></transition></template><template><name>HelperRole</name><parameter>const id_pacT id, int myPrio</parameter><declaration>int coordinates = 100;
-clock t0;</declaration><location id="id8" x="-2368" y="-1040"><name x="-2408" y="-1080">Standalone</name></location><location id="id9" x="-2224" y="-1040"><name x="-2248" y="-1072">ready</name></location><location id="id10" x="-1776" y="-1040"><name x="-1760" y="-1056">travelToCaller</name></location><location id="id11" x="-2032" y="-1040"><name x="-2064" y="-1080">checking</name></location><init ref="id8"/><transition><source ref="id10"/><target ref="id8"/><label kind="synchronisation" x="-2080" y="-1240">helpArrived!</label><nail x="-2040" y="-1224"/></transition><transition><source ref="id9"/><target ref="id8"/><label kind="synchronisation" x="-2336" y="-952">cancelHelp[id]?</label><nail x="-2296" y="-952"/></transition><transition><source ref="id8"/><target ref="id9"/><label kind="synchronisation" x="-2328" y="-1064">canHelp[id]?</label></transition><transition><source ref="id10"/><target ref="id9"/><label kind="synchronisation" x="-2072" y="-1152">requestCanceled?</label><nail x="-2008" y="-1136"/></transition><transition><source ref="id11"/><target ref="id9"/><label kind="guard" x="-2208" y="-960">!check(myPrio, coordinates)</label><label kind="synchronisation" x="-2176" y="-944">requestDenied!</label><nail x="-2128" y="-960"/></transition><transition><source ref="id9"/><target ref="id11"/><label kind="synchronisation" x="-2168" y="-1064">helpRequest?</label></transition><transition><source ref="id11"/><target ref="id10"/><label kind="guard" x="-2000" y="-1064">check(myPrio, coordinates)</label><label kind="synchronisation" x="-1968" y="-1040">requestApproved!</label></transition></template><template><name>RemoverRole</name><parameter>const id_pacT id</parameter><declaration>clock t0;
-bool partnerDone = false;</declaration><location id="id12" x="-368" y="-136"><name x="-378" y="-166">idle</name></location><location id="id13" x="8" y="-136"><name x="-40" y="-176">removeObject</name></location><location id="id14" x="-200" y="-136"><name x="-240" y="-168">prepareTask</name></location><init ref="id12"/><transition><source ref="id13"/><target ref="id13"/><label kind="synchronisation" x="152" y="-152">prepareDone?</label><label kind="assignment" x="152" y="-136">partnerDone = true</label><nail x="144" y="-200"/><nail x="144" y="-64"/></transition><transition><source ref="id14"/><target ref="id14"/><label kind="synchronisation" x="-248" y="-88">prepareDone?</label><label kind="assignment" x="-256" y="-72">partnerDone = true</label><nail x="-240" y="-88"/><nail x="-168" y="-88"/></transition><transition><source ref="id13"/><target ref="id12"/><label kind="synchronisation" x="-248" y="-256">problemSolved?</label><nail x="-200" y="-240"/></transition><transition><source ref="id13"/><target ref="id12"/><label kind="guard" x="-256" y="8">partnerDone == true</label><label kind="synchronisation" x="-248" y="24">problemSolved!</label><nail x="-208" y="0"/></transition><transition><source ref="id12"/><target ref="id14"/><label kind="synchronisation" x="-328" y="-152">helpArrived?</label></transition><transition><source ref="id14"/><target ref="id13"/><label kind="synchronisation" x="-144" y="-152">prepareDone!</label></transition></template><system>// Place template instantiations here.
-caller0 = CallerRole(0, 8);
-helper0 = HelperRole(0, 3);
-remover0 = RemoverRole(0);
-synch0 = Synchronization(0);
+</declaration><location id="id0" x="-1024" y="-216"><name x="-1096" y="-248">CallerRole</name></location><location id="id1" x="-272" y="-216"><name x="-264" y="-248">HelperRole</name></location><location id="id2" x="-648" y="72"><name x="-696" y="88">prepareRemover</name></location><location id="id3" x="-648" y="-64"><name x="-632" y="-72">RemoverRole</name></location><location id="id4" x="-848" y="-216"><name x="-888" y="-200">prepareCaller</name></location><location id="id5" x="-448" y="-216"><name x="-496" y="-200">prepareHelper</name></location><location id="id6" x="-648" y="-216"><name x="-640" y="-208">IDLE</name></location><init ref="id6"/><transition><source ref="id1"/><target ref="id5"/><label kind="synchronisation" x="-424" y="-264">resetHelperRole[id]?</label><nail x="-360" y="-248"/></transition><transition><source ref="id0"/><target ref="id4"/><label kind="synchronisation" x="-1000" y="-264">resetCallerRole[id]?</label><nail x="-936" y="-240"/></transition><transition><source ref="id1"/><target ref="id6"/><label kind="synchronisation" x="-472" y="-376">cancelHelp[id]!</label><nail x="-272" y="-352"/><nail x="-576" y="-352"/></transition><transition><source ref="id0"/><target ref="id6"/><label kind="synchronisation" x="-928" y="-376">cancelNeed[id]!</label><nail x="-1024" y="-352"/><nail x="-736" y="-352"/></transition><transition><source ref="id0"/><target ref="id2"/><label kind="synchronisation" x="-1016" y="48">helpArrived?</label><nail x="-1024" y="72"/></transition><transition><source ref="id4"/><target ref="id0"/><label kind="synchronisation" x="-992" y="-184">becomeCaller[id]?</label><nail x="-936" y="-184"/></transition><transition><source ref="id1"/><target ref="id2"/><label kind="synchronisation" x="-352" y="48">helpArrived?</label><nail x="-272" y="72"/></transition><transition><source ref="id5"/><target ref="id1"/><label kind="synchronisation" x="-416" y="-184">becomeHelper[id]?</label><nail x="-360" y="-184"/></transition><transition><source ref="id2"/><target ref="id3"/><label kind="synchronisation" x="-712" y="8">becomeRemover[id]!</label></transition><transition><source ref="id6"/><target ref="id5"/><label kind="synchronisation" x="-584" y="-184">canHelp[id]!</label><nail x="-544" y="-184"/></transition><transition><source ref="id5"/><target ref="id6"/><label kind="synchronisation" x="-584" y="-256">cancelHelp[id]!</label><nail x="-544" y="-240"/></transition><transition><source ref="id4"/><target ref="id6"/><label kind="synchronisation" x="-800" y="-256">cancelNeed[id]!</label><nail x="-752" y="-240"/></transition><transition><source ref="id3"/><target ref="id6"/><label kind="synchronisation" x="-696" y="-144">problemSolved?</label></transition><transition><source ref="id6"/><target ref="id4"/><label kind="synchronisation" x="-784" y="-192">needHelp[id]!</label><nail x="-744" y="-192"/></transition></template><template><name>CallerRole</name><parameter>const id_pacT id, int myPrio, int xPos, int yPos</parameter><declaration>clock t0;</declaration><location id="id7" x="-200" y="-56"><name x="-280" y="-72">ResetRole</name></location><location id="id8" x="104" y="40"><name x="120" y="32">approved</name></location><location id="id9" x="104" y="-176"><name x="120" y="-200">waiting</name><label kind="invariant" x="120" y="-184">t0 &lt;= 15</label></location><location id="id10" x="-456" y="-176"><name x="-520" y="-208">Standalone</name></location><location id="id11" x="-200" y="40"><name x="-232" y="56">called</name><label kind="comments">(in community)</label></location><location id="id12" x="-200" y="-176"><name x="-232" y="-216">requesting</name></location><init ref="id10"/><transition><source ref="id7"/><target ref="id12"/><label kind="synchronisation" x="-264" y="-120">resetCallerRole[id]!</label></transition><transition><source ref="id11"/><target ref="id7"/><label kind="synchronisation" x="-264" y="-8">cancelRequest!</label></transition><transition><source ref="id9"/><target ref="id12"/><label kind="guard" x="-64" y="-152">t0 &gt;= 10</label><label kind="synchronisation" x="-88" y="-136">requestTimeout!</label><nail x="-40" y="-152"/></transition><transition><source ref="id8"/><target ref="id11"/><label kind="synchronisation" x="-96" y="16">becomeCaller[id]!</label></transition><transition><source ref="id9"/><target ref="id8"/><label kind="synchronisation" x="112" y="-80">requestApproved?</label></transition><transition><source ref="id9"/><target ref="id12"/><label kind="synchronisation" x="-88" y="-80">requestDenied?</label><nail x="-40" y="-80"/></transition><transition><source ref="id12"/><target ref="id9"/><label kind="synchronisation" x="-88" y="-272">helpRequest!</label><label kind="assignment" x="-120" y="-256">putData(myPrio, xPos, yPos),
+t0 = 0</label><nail x="-40" y="-224"/></transition><transition><source ref="id12"/><target ref="id10"/><label kind="synchronisation" x="-376" y="-240">cancelNeed[id]?</label><nail x="-328" y="-216"/></transition><transition><source ref="id11"/><target ref="id10"/><label kind="synchronisation" x="-416" y="16">helpArrived?</label><nail x="-456" y="40"/></transition><transition><source ref="id10"/><target ref="id12"/><label kind="synchronisation" x="-368" y="-144">needHelp[id]?</label><nail x="-328" y="-144"/></transition></template><template><name>HelperRole</name><parameter>const id_pacT id, int myPrio, int xPos, int yPos</parameter><declaration>clock t0;</declaration><location id="id13" x="-1944" y="-872"><name x="-1968" y="-904">ResetRole</name></location><location id="id14" x="-1792" y="-1040"><name x="-1824" y="-1080">approved</name></location><location id="id15" x="-2368" y="-1040"><name x="-2408" y="-1080">Standalone</name></location><location id="id16" x="-2224" y="-1040"><name x="-2248" y="-1072">ready</name></location><location id="id17" x="-1568" y="-1040"><name x="-1552" y="-1056">travelToCaller</name></location><location id="id18" x="-2032" y="-1040"><name x="-2064" y="-1080">checking</name></location><init ref="id15"/><transition><source ref="id13"/><target ref="id16"/><label kind="synchronisation" x="-2160" y="-896">resetHelperRole[id]!</label><nail x="-2224" y="-872"/></transition><transition><source ref="id17"/><target ref="id13"/><label kind="synchronisation" x="-1680" y="-896">cancelRequest?</label><nail x="-1568" y="-872"/></transition><transition><source ref="id18"/><target ref="id16"/><label kind="synchronisation" x="-2184" y="-1136">requestTimeout?</label><nail x="-2128" y="-1120"/></transition><transition><source ref="id18"/><target ref="id14"/><label kind="guard" x="-1992" y="-1056">check(myPrio, xPos, yPos)</label><label kind="synchronisation" x="-1976" y="-1040">requestApproved!</label></transition><transition><source ref="id14"/><target ref="id17"/><label kind="synchronisation" x="-1760" y="-1056">becomeHelper[id]!</label></transition><transition><source ref="id17"/><target ref="id15"/><label kind="synchronisation" x="-2016" y="-1264">helpArrived!</label><nail x="-1568" y="-1240"/><nail x="-2368" y="-1240"/></transition><transition><source ref="id16"/><target ref="id15"/><label kind="synchronisation" x="-2336" y="-976">cancelHelp[id]?</label><nail x="-2296" y="-976"/></transition><transition><source ref="id15"/><target ref="id16"/><label kind="synchronisation" x="-2336" y="-1064">canHelp[id]?</label></transition><transition><source ref="id18"/><target ref="id16"/><label kind="guard" x="-2208" y="-960">!check(myPrio, xPos, yPos)</label><label kind="synchronisation" x="-2176" y="-944">requestDenied!</label><nail x="-2128" y="-960"/></transition><transition><source ref="id16"/><target ref="id18"/><label kind="synchronisation" x="-2168" y="-1064">helpRequest?</label></transition></template><template><name>RemoverRole</name><parameter>const id_pacT id</parameter><declaration>clock t0;</declaration><location id="id19" x="192" y="-200"><name x="168" y="-232">PrepDone</name></location><location id="id20" x="192" y="-72"><name x="144" y="-56">partnerPrepDone</name></location><location id="id21" x="-176" y="-144"><name x="-200" y="-176">ready</name></location><location id="id22" x="-368" y="-144"><name x="-400" y="-176">idle</name></location><location id="id23" x="368" y="-136"><name x="384" y="-144">removeObject</name></location><location id="id24" x="16" y="-144"><name x="-24" y="-176">TaskPrepared</name></location><init ref="id22"/><transition><source ref="id20"/><target ref="id23"/><label kind="synchronisation" x="248" y="-96">prepareDone!</label></transition><transition><source ref="id19"/><target ref="id23"/><label kind="synchronisation" x="248" y="-200">prepareDone?</label></transition><transition><source ref="id24"/><target ref="id19"/><label kind="synchronisation" x="48" y="-200">prepareDone!</label></transition><transition><source ref="id24"/><target ref="id20"/><label kind="synchronisation" x="48" y="-96">prepareDone?</label></transition><transition><source ref="id21"/><target ref="id24"/><label kind="synchronisation" x="-128" y="-112">prepareTask?</label><nail x="-88" y="-112"/></transition><transition><source ref="id21"/><target ref="id24"/><label kind="synchronisation" x="-128" y="-200">prepareTask!</label><nail x="-88" y="-184"/></transition><transition><source ref="id22"/><target ref="id21"/><label kind="synchronisation" x="-344" y="-168">becomeRemover[id]?</label></transition><transition><source ref="id23"/><target ref="id22"/><label kind="synchronisation" x="-72" y="-328">problemSolved?</label><nail x="368" y="-304"/><nail x="-368" y="-304"/></transition><transition><source ref="id23"/><target ref="id22"/><label kind="synchronisation" x="-64" y="8">problemSolved!</label><nail x="368" y="8"/><nail x="-368" y="8"/></transition></template><system>// Create role templates with data
+CallerT(const int i) = CallerRole(data[i].id, data[i].prio, data[i].x, data[i].y);
+HelperT(const int i) = HelperRole(data[i].id, data[i].prio, data[i].x, data[i].y);
+RemovT(const int i) = RemoverRole(data[i].id);
+SyncT(const int i) = Synchronization(data[i].id);
 
-caller1 = CallerRole(1, 2);
-helper1 = HelperRole(1, 5);
-remover1 = RemoverRole(1);
-synch1 = Synchronization(1);
+// Instantiate templates.
+caller0 = CallerT(0);
+helper0 = HelperT(0);
+remover0 = RemovT(0);
+synch0 = SyncT(0);
+
+caller1 = CallerT(1);
+helper1 = HelperT(1);
+remover1 = RemovT(1);
+synch1 = SyncT(1);
+
+caller2 = CallerT(2);
+helper2 = HelperT(2);
+remover2 = RemovT(2);
+synch2 = SyncT(2);
+
+caller3 = CallerT(3);
+helper3 = HelperT(3);
+remover3 = RemovT(3);
+synch3 = SyncT(3);
 
 // List one or more processes to be composed into a system.
-system caller0, helper0, remover0, synch0, caller1, helper1, remover1, synch1;</system></nta>
+system  caller0, helper0, remover0, synch0, 
+	caller1, helper1, remover1, synch1,
+	caller2, helper2, remover2, synch2,
+	caller3, helper3, remover3, synch3;</system></nta>
